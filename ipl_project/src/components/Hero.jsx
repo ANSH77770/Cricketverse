@@ -1,5 +1,46 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import './Hero.css'
+
+const IPL_FINAL_2026 = {
+  matchDate: '2026-05-31T19:30:00+05:30',
+  completedAt: '2026-05-31T23:15:00+05:30',
+  venue: 'Narendra Modi Stadium, Ahmedabad',
+  teams: {
+    first: { name: 'Gujarat Titans', short: 'GT', color: '#1C7ED6', score: '155/8', overs: '20.0' },
+    second: { name: 'Royal Challengers Bengaluru', short: 'RCB', color: '#CC0000', score: '161/5', overs: '18.0' },
+  },
+  prediction: {
+    favorite: 'Royal Challengers Bengaluru',
+    confidence: 56,
+    reason: 'RCB entered the final with title experience, stronger finishing options, and a bowling attack suited to defending pressure moments.',
+    factors: ['Qualifier momentum', 'Death-over batting depth', 'Powerplay bowling control'],
+  },
+  result: {
+    winner: 'Royal Challengers Bengaluru',
+    runner: 'Gujarat Titans',
+    margin: 'by 5 wickets',
+    player: 'Virat Kohli 75*',
+    conclusion: 'RCB chased 156 in 18 overs to beat GT by 5 wickets and defend the IPL title. Kohli finished unbeaten on 75, turning the final into a calm, clinical chase after GT were held to 155/8.',
+  },
+}
+
+function getFinalSnapshot() {
+  const now = new Date()
+  const resultTime = new Date(IPL_FINAL_2026.completedAt)
+  const isResultReady = now >= resultTime
+
+  return {
+    ...IPL_FINAL_2026,
+    isResultReady,
+    statusLabel: isResultReady ? 'Final Result' : 'Prediction',
+    headline: isResultReady
+      ? `${IPL_FINAL_2026.result.winner} are IPL 2026 champions`
+      : `${IPL_FINAL_2026.prediction.favorite} edge the prediction`,
+    summary: isResultReady
+      ? IPL_FINAL_2026.result.conclusion
+      : IPL_FINAL_2026.prediction.reason,
+  }
+}
 
 /* ── IPL CHAMPIONS DATA ── */
 const IPL_HISTORY = [
@@ -21,7 +62,7 @@ const IPL_HISTORY = [
   { year: 2023, winner: 'Chennai Super Kings',         runner: 'Gujarat Titans',          winnerShort: 'CSK',  runnerShort: 'GT',   margin: 'by 5 wickets', winnerColor: '#F5A623', runnerColor: '#1C7ED6' },
   { year: 2024, winner: 'Kolkata Knight Riders',       runner: 'Sunrisers Hyderabad',     winnerShort: 'KKR',  runnerShort: 'SRH',  margin: 'by 8 wickets', winnerColor: '#8B5CF6', runnerColor: '#FF6B00' },
   { year: 2025, winner: 'Royal Challengers Bengaluru', runner: 'Punjab Kings',            winnerShort: 'RCB',  runnerShort: 'PBKS', margin: 'by 6 runs',    winnerColor: '#CC0000', runnerColor: '#ED1C24' },
-  { year: 2026, winner: 'Royal Challengers',           runner: 'Gujarat Titans',          winnerShort: 'RCB',  runnerShort: 'GT',   margin: 'LIVE',         winnerColor: '#CC0000', runnerColor: '#1C7ED6' },
+  { year: 2026, winner: 'Royal Challengers Bengaluru', runner: 'Gujarat Titans',          winnerShort: 'RCB',  runnerShort: 'GT',   margin: 'by 5 wickets', winnerColor: '#CC0000', runnerColor: '#1C7ED6' },
 ]
 
 /* ── GSAP SCROLL ANIMATIONS HOOK ── */
@@ -266,12 +307,7 @@ function TrophySection() {
     return () => obs.disconnect()
   }, [])
 
-  useEffect(() => {
-    autoRef.current = setInterval(() => goTo('next'), 4000)
-    return () => clearInterval(autoRef.current)
-  }, [active, animating])
-
-  const goTo = (dir) => {
+  const goTo = useCallback((dir) => {
     if (animating) return
     setDirection(dir)
     setAnimating(true)
@@ -283,7 +319,12 @@ function TrophySection() {
       )
       setAnimating(false)
     }, 420)
-  }
+  }, [animating])
+
+  useEffect(() => {
+    autoRef.current = setInterval(() => goTo('next'), 4000)
+    return () => clearInterval(autoRef.current)
+  }, [goTo])
 
   const jump = (i) => {
     if (i === active || animating) return
@@ -293,7 +334,7 @@ function TrophySection() {
   }
 
   const entry  = IPL_HISTORY[active]
-  const isLive = entry.year === 2026
+  const isLatestChampion = entry.year === 2026
 
   return (
     <section
@@ -321,7 +362,7 @@ function TrophySection() {
           <div className="trophy-slide__year-badge">
             <span className="trophy-slide__year">{entry.year}</span>
             <span className="trophy-slide__edition">
-              {isLive ? '🔴 LIVE' : `Season ${active + 1}`}
+              {isLatestChampion ? 'Latest champion' : `Season ${active + 1}`}
             </span>
           </div>
 
@@ -339,7 +380,7 @@ function TrophySection() {
               </div>
               <p className="trophy-slide__team-name">{entry.runner}</p>
               <span className="trophy-slide__team-role runner-label">
-                {isLive ? 'Finalist' : 'Runner-up'}
+                Runner-up
               </span>
             </div>
 
@@ -387,7 +428,7 @@ function TrophySection() {
                       className="trophy-particle"
                       style={{
                         '--angle': `${i * 22.5}deg`,
-                        '--dist':  `${55 + Math.random() * 30}px`,
+                        '--dist':  `${55 + ((i * 17) % 30)}px`,
                         '--delay': `${i * 0.12}s`,
                         '--color': i % 2 === 0 ? entry.winnerColor : '#FFD700',
                       }}
@@ -406,10 +447,7 @@ function TrophySection() {
               >
                 <div className="team-card__ring team-card__ring--outer" />
                 <div className="team-card__ring team-card__ring--inner" />
-                {isLive
-                  ? <div className="team-card__live">LIVE</div>
-                  : <div className="team-card__crown">♛</div>
-                }
+                <div className="team-card__crown">♛</div>
                 <span className="team-card__abbr">{entry.winnerShort}</span>
                 <div className="team-card__confetti">
                   {Array.from({ length: 8 }).map((_, i) => (
@@ -423,7 +461,7 @@ function TrophySection() {
               </div>
               <p className="trophy-slide__team-name">{entry.winner}</p>
               <span className="trophy-slide__team-role winner-label">
-                {isLive ? '🔴 Finalist' : '🏆 Champions'}
+                Champions
               </span>
             </div>
 
@@ -442,7 +480,7 @@ function TrophySection() {
             {IPL_HISTORY.map((h, i) => (
               <button
                 key={h.year}
-                className={`trophy-dot ${i === active ? 'trophy-dot--active' : ''} ${h.year === 2026 ? 'trophy-dot--live' : ''}`}
+                className={`trophy-dot ${i === active ? 'trophy-dot--active' : ''} ${h.year === 2026 ? 'trophy-dot--latest' : ''}`}
                 onClick={() => jump(i)}
                 title={h.year}
               >
@@ -477,6 +515,59 @@ function TrophySection() {
 /* ─────────────────────────────────────────────────────────────────
    SCENES
 ─────────────────────────────────────────────────────────────────── */
+function PredictionSection() {
+  const [snapshot, setSnapshot] = useState(() => getFinalSnapshot())
+
+  useEffect(() => {
+    const id = setInterval(() => setSnapshot(getFinalSnapshot()), 60000)
+    return () => clearInterval(id)
+  }, [])
+
+  const { teams, prediction, result } = snapshot
+  const leadTeam = snapshot.isResultReady ? teams.second : teams[prediction.favorite === teams.first.name ? 'first' : 'second']
+  const trailingTeam = leadTeam.short === teams.first.short ? teams.second : teams.first
+
+  return (
+    <section className={`prediction-section ${snapshot.isResultReady ? 'prediction-section--result' : 'prediction-section--forecast'}`}>
+      <div className="prediction-section__inner">
+        <div className="prediction-section__copy">
+          <p className="section__eyebrow">{snapshot.statusLabel}</p>
+          <h2 className="prediction-section__heading">{snapshot.headline}</h2>
+          <p className="prediction-section__body">{snapshot.summary}</p>
+        </div>
+
+        <div className="prediction-panel">
+          <div className="prediction-panel__topline">
+            <span>{snapshot.venue}</span>
+            <strong>{snapshot.isResultReady ? result.margin : `${prediction.confidence}% confidence`}</strong>
+          </div>
+
+          <div className="prediction-scoreboard">
+            {[leadTeam, trailingTeam].map(team => (
+              <div
+                className={`prediction-team ${team.short === leadTeam.short ? 'prediction-team--lead' : ''}`}
+                key={team.short}
+                style={{ '--team-color': team.color }}
+              >
+                <span className="prediction-team__abbr">{team.short}</span>
+                <span className="prediction-team__name">{team.name}</span>
+                <strong className="prediction-team__score">
+                  {snapshot.isResultReady ? `${team.score} (${team.overs})` : team.short}
+                </strong>
+              </div>
+            ))}
+          </div>
+
+          <div className="prediction-panel__note">
+            <span>{snapshot.isResultReady ? 'Player impact' : 'Prediction signals'}</span>
+            <strong>{snapshot.isResultReady ? result.player : prediction.factors.join(' / ')}</strong>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 const SCENES = [
   {
     id: 'opening',
@@ -507,10 +598,10 @@ const SCENES = [
   {
     id: 'finale',
     startFrac: 0.74, endFrac: 1.00,
-    eyebrow: 'GRAND FINALE · TODAY · 7:30 PM IST',
-    heading: 'GT\nvs\nRCB',
-    body: 'Narendra Modi Stadium · Ahmedabad · 132,000 Fans',
-    cta: { primary: 'Watch Live Now', ghost: 'Match Preview' },
+    eyebrow: 'FINAL RESULT · 31 MAY 2026',
+    heading: 'RCB\nWIN\nAGAIN',
+    body: 'Royal Challengers Bengaluru beat Gujarat Titans by 5 wickets in Ahmedabad.',
+    cta: { primary: 'View Result', ghost: 'Prediction' },
     align: 'center', size: 'hero', teams: true,
   },
 ]
@@ -662,7 +753,7 @@ export default function Hero() {
             <li key={item}><a href="#" className="nav__link">{item}</a></li>
           ))}
         </ul>
-        <button className="nav__cta">Watch Live</button>
+        <button className="nav__cta">Final Result</button>
         <div className="nav__progress">
           <div className="nav__progress-fill" style={{ width: barW }} />
         </div>
@@ -768,6 +859,8 @@ export default function Hero() {
 
       <TrophySection />
 
+      <PredictionSection />
+
       {/* stat cards start invisible — GSAP animates them in */}
       <section className="section section--dark">
         <div className="section__inner">
@@ -813,7 +906,7 @@ export default function Hero() {
               className="teams-divider"
               style={{ opacity: 0 /* GSAP scales in */ }}
             >
-              <span>FINAL</span>
+              <span>RESULT</span>
             </div>
 
             <div
@@ -834,16 +927,16 @@ export default function Hero() {
       {/* CTA section — all children start invisible, GSAP slides from bottom */}
       <section className="section section--cta">
         <div className="section__inner section__inner--centered">
-          <p className="section__eyebrow"    style={{ opacity: 0 }}>Don't Miss It</p>
+          <p className="section__eyebrow"    style={{ opacity: 0 }}>Conclusion</p>
           <h2 className="section__heading section__heading--gold" style={{ opacity: 0 }}>
-            Secure Your Seat<br />at History
+            RCB Hold<br />The Crown
           </h2>
           <p className="section__body" style={{ opacity: 0 }}>
-            Over 132,000 fans. One champion. Tonight at 7:30 PM IST.
+            The 2026 final is complete: RCB beat GT by 5 wickets to become back-to-back IPL champions.
           </p>
           <div className="cta-row" style={{ opacity: 0 }}>
-            <button className="btn btn--primary btn--large">Book Tickets</button>
-            <button className="btn btn--ghost btn--large">View Schedule</button>
+            <button className="btn btn--primary btn--large">RCB Won</button>
+            <button className="btn btn--ghost btn--large">GT Runner-up</button>
           </div>
         </div>
         <div className="section__flare section__flare--left"  style={{ opacity: 0 }} />
